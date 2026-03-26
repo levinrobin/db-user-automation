@@ -1,84 +1,47 @@
 name: Create PostgreSQL User After PR Merge
-
 on:
-
-  pull_request:
-
-    types: [closed]
-
+ pull_request:
+   types: [closed]
 jobs:
-
-  create-user:
-
-    if: github.event.pull_request.merged == true
-
-    runs-on: ubuntu-latest
-
-    permissions:
-
-      contents: read
-
-      id-token: write
-
-    steps:
-
-      - name: Checkout code
-
-        uses: actions/checkout@v4
-
-      - name: Authenticate to Google Cloud
-
-        uses: google-github-actions/auth@v2
-
-        with:
-
-          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
-
-          service_account: ${{ secrets.SERVICE_ACCOUNT }}
-
-      - name: Download Cloud SQL Auth Proxy
-
-        run: |
-
-          curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.21.1/cloud-sql-proxy.linux.amd64
-
-          chmod +x cloud-sql-proxy
-
-      - name: Start Cloud SQL Auth Proxy
-
-        run: |
-
-          ./cloud-sql-proxy ${{ secrets.CLOUD_SQL_INSTANCE }} --port 5432 > proxy.log 2>&1 &
-
-          sleep 10
-
-          cat proxy.log
-
-      - name: Install PostgreSQL client
-
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-
-      - name: Test DB connection
-
-        env:
-
-          PGPASSWORD: ${{ secrets.PGPASSWORD }}
-
-        run: |
-
-          psql -h 127.0.0.1 -U ${{ secrets.PGUSER }} -d ${{ secrets.PGDATABASE }} -c "\conninfo"
-
-      - name: Run user creation script
-
-        env:
-
-          PGUSER: ${{ secrets.PGUSER }}
-
-          PGDATABASE: ${{ secrets.PGDATABASE }}
-
-          PGPASSWORD: ${{ secrets.PGPASSWORD }}
-
-          NEW_DB_PASSWORD: ${{ secrets.NEW_DB_PASSWORD }}
-
-        run: bash scripts/create-user.sh
- 
+ create-user:
+   if: github.event.pull_request.merged == true
+   runs-on: ubuntu-latest
+   permissions:
+     contents: read
+     id-token: write
+   steps:
+     - name: Checkout code
+       uses: actions/checkout@v4
+     - name: Authenticate to Google Cloud
+       uses: google-github-actions/auth@v2
+       with:
+         workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+         service_account: ${{ secrets.SERVICE_ACCOUNT }}
+     - name: Download Cloud SQL Proxy
+       run: |
+         curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.21.1/cloud-sql-proxy.linux.amd64
+         chmod +x cloud-sql-proxy
+     - name: Start Cloud SQL Proxy
+       run: |
+         ./cloud-sql-proxy ${{ secrets.CLOUD_SQL_INSTANCE }} --port 5432 > proxy.log 2>&1 &
+         sleep 10
+         cat proxy.log
+     - name: Install PostgreSQL client
+       run: |
+         sudo apt-get update
+         sudo apt-get install -y postgresql-client
+     - name: Check database connection
+       env:
+         PGPASSWORD: ${{ secrets.PGPASSWORD }}
+       run: |
+         psql -h 127.0.0.1 -p 5432 -U ${{ secrets.PGUSER }} -d ${{ secrets.PGDATABASE }} -c "\conninfo"
+     - name: Run create user script
+       env:
+         PGHOST: 127.0.0.1
+         PGPORT: 5432
+         PGUSER: ${{ secrets.PGUSER }}
+         PGDATABASE: ${{ secrets.PGDATABASE }}
+         PGPASSWORD: ${{ secrets.PGPASSWORD }}
+         NEW_DB_PASSWORD: ${{ secrets.NEW_DB_PASSWORD }}
+       run: |
+         bash scripts/create-user.sh
