@@ -1,0 +1,25 @@
+name: Create PostgreSQL User After PR Merge
+
+on:
+ pull_request:
+   types: [closed]
+
+jobs:
+ create-user:
+   if: github.event.pull_request.merged == true
+   runs-on: ubuntu-latest
+
+   steps:
+     - name: Checkout code
+       uses: actions/checkout@v4
+
+     - name: Install PostgreSQL client
+       run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+     - name: Run user creation script
+       env:
+         PGHOST: ${{ secrets.PGHOST }}
+         PGUSER: ${{ secrets.PGUSER }}
+         PGDATABASE: ${{ secrets.PGDATABASE }}   
+         PGPASSWORD: ${{ secrets.PGPASSWORD }}
+       run: bash scripts/create-user.sh
