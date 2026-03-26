@@ -22,4 +22,6 @@ jobs:
          PGUSER: ${{ secrets.PGUSER }}
          PGDATABASE: ${{ secrets.PGDATABASE }}   
          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+         USER_NAME: user_02
+         USER_PASSWORD: ${{ secrets.USERPASSWORD}}
        run: bash scripts/create-user.sh
