@@ -2,7 +2,7 @@
 
 set -e
 
-USER_NAME="user_01"
+USER_NAME=${USER_NAME}
 USER_PASSWORD="Levin16robert@"
 
 echo "Checking if user '$USER_NAME' already exists..."
