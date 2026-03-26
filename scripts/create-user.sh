@@ -1,13 +1,9 @@
 #!/bin/bash
-
 set -e
-
-USER_NAME=${USER_NAME}
-USER_PASSWORD="Levin16robert@"
-
+USER_NAME="user_01"
+USER_PASSWORD="$NEW_DB_PASSWORD"
 echo "Checking if user '$USER_NAME' already exists..."
-
-psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" <<EOF
+psql -h 127.0.0.1 -p 5432 -U "$PGUSER" -d "$PGDATABASE" <<EOF
 DO \$\$
 BEGIN
   IF NOT EXISTS (
@@ -21,5 +17,4 @@ BEGIN
 END
 \$\$;
 EOF
-
 echo "Script execution completed."
