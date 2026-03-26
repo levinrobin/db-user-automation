@@ -48,13 +48,25 @@ jobs:
 
         run: |
 
-          ./cloud-sql-proxy ${{ secrets.CLOUD_SQL_INSTANCE }} --port 5432 &
+          ./cloud-sql-proxy ${{ secrets.CLOUD_SQL_INSTANCE }} --port 5432 > proxy.log 2>&1 &
 
           sleep 10
+
+          cat proxy.log
 
       - name: Install PostgreSQL client
 
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Test DB connection
+
+        env:
+
+          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+
+        run: |
+
+          psql -h 127.0.0.1 -U ${{ secrets.PGUSER }} -d ${{ secrets.PGDATABASE }} -c "\conninfo"
 
       - name: Run user creation script
 
