@@ -9,7 +9,7 @@ BEGIN
   IF NOT EXISTS (
      SELECT 1 FROM pg_roles WHERE rolname = '$USER_NAME'
   ) THEN
-     CREATE USER $USER_NAME WITH PASSWORD = '$USER_PASSWORD';
+     CREATE USER $USER_NAME WITH PASSWORD '$USER_PASSWORD';
      RAISE NOTICE 'User created successfully.';
   ELSE
      RAISE NOTICE 'User already exists. Skipping creation.';
