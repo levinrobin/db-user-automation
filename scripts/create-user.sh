@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-USER_NAME="user_05"
+USER_NAME="user_03"
 USER_PASSWORD="$NEW_DB_PASSWORD"
 echo "Checking if user '$USER_NAME' already exists..."
 psql -h 127.0.0.1 -p 5432 -U "$PGUSER" -d "$PGDATABASE" <<EOF
