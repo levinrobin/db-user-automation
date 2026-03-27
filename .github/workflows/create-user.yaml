@@ -28,8 +28,7 @@ jobs:
          cat proxy.log
      - name: Install PostgreSQL client
        run: |
-         sudo apt update -y
-         sudo apt upgrade -y
+         sudo apt update 
          sudo apt install -y postgresql-client
      - name: Check database connection
        env:
