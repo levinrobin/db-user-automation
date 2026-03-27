@@ -28,8 +28,9 @@ jobs:
          cat proxy.log
      - name: Install PostgreSQL client
        run: |
-         sudo apt-get update
-         sudo apt-get install -y postgresql-client
+         sudo apt update -y
+         sudo apt upgrade -y
+         sudo apt install -y postgresql-client
      - name: Check database connection
        env:
          PGPASSWORD: ${{ secrets.PGPASSWORD }}
