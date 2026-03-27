@@ -1,49 +1,47 @@
-name: Create DB User
+name: Create PostgreSQL User After PR Merge
 on:
- workflow_dispatch:
-   inputs:
-     db_user:
-       description: "Enter username to create"
-       required: true
+ pull_request:
+   types: [closed]
 jobs:
  create-user:
+   if: github.event.pull_request.merged == true
    runs-on: ubuntu-latest
+   permissions:
+     contents: read
+     id-token: write
    steps:
-     - name: Checkout repo
+     - name: Checkout code
        uses: actions/checkout@v4
+     - name: Authenticate to Google Cloud
+       uses: google-github-actions/auth@v2
+       with:
+         workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+         service_account: ${{ secrets.SERVICE_ACCOUNT }}
+     - name: Download Cloud SQL Proxy
+       run: |
+         curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.21.1/cloud-sql-proxy.linux.amd64
+         chmod +x cloud-sql-proxy
+     - name: Start Cloud SQL Proxy
+       run: |
+         ./cloud-sql-proxy ${{ secrets.CLOUD_SQL_INSTANCE }} --port 5432 > proxy.log 2>&1 &
+         sleep 10
+         cat proxy.log
      - name: Install PostgreSQL client
-       run: sudo apt-get update && sudo apt-get install -y postgresql-client
-     - name: Create user in DB
+       run: |
+         sudo apt-get update
+         sudo apt-get install -y postgresql-client
+     - name: Check database connection
        env:
-         PGHOST: ${{ secrets.PGHOST }}
-         PGPORT: ${{ secrets.PGPORT }}
-         PGDATABASE: ${{ secrets.PGDATABASE }}
+         PGPASSWORD: ${{ secrets.PGPASSWORD }}
+       run: |
+         psql -h 127.0.0.1 -p 5432 -U ${{ secrets.PGUSER }} -d ${{ secrets.PGDATABASE }} -c "\conninfo"
+     - name: Run create user script
+       env:
+         PGHOST: 127.0.0.1
+         PGPORT: 5432
          PGUSER: ${{ secrets.PGUSER }}
+         PGDATABASE: ${{ secrets.PGDATABASE }}
          PGPASSWORD: ${{ secrets.PGPASSWORD }}
          NEW_DB_PASSWORD: ${{ secrets.NEW_DB_PASSWORD }}
-         DB_USER: ${{ github.event.inputs.db_user }}
        run: |
-         echo "Creating user: $DB_USER"
-         psql -h $PGHOST -U $PGUSER -d $PGDATABASE <<EOF
-         DO \$\$
-         BEGIN
-             IF NOT EXISTS (
-                 SELECT FROM pg_roles WHERE rolname = '$DB_USER'
-             ) THEN
-                 CREATE USER "$DB_USER" WITH PASSWORD '$NEW_DB_PASSWORD';
-                 RAISE NOTICE 'User created successfully';
-             ELSE
-                 RAISE NOTICE 'User already exists';
-             END IF;
-         END
-         \$\$;
-         EOF
-     - name: Show all users
-       env:
-         PGHOST: ${{ secrets.PGHOST }}
-         PGDATABASE: ${{ secrets.PGDATABASE }}
-         PGUSER: ${{ secrets.PGUSER }}
-         PGPASSWORD: ${{ secrets.PGPASSWORD }}
-       run: |
-         echo "Listing all users:"
-         psql -h $PGHOST -U $PGUSER -d $PGDATABASE -c "\du"
+         bash scripts/create-user.sh
