@@ -26,9 +26,9 @@ do
 
   echo "Checking user: $USER_NAME"
 
-  USER_EXISTS=$(psql -h 127.0.0.1 -p 5432 -U "$PGUSER" -d "$PGDATABASE" -t -A -c \
+  USER_EXISTS=$(psql -h 127.0.0.1 -p 5432 -U "$PGUSER" -d "$PGDATABASE" \ 
 
-    "SELECT 1 FROM pg_roles WHERE rolname = '$USER_NAME'")
+    -t -A -c "SELECT 1 FROM pg_roles WHERE rolname = '$USER_NAME'")
 
   if [ "$USER_EXISTS" = "1" ]; then
 
