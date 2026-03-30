@@ -8,38 +8,26 @@ USER_LIST=$(grep 'name:' user.yml | awk '{print $3}')
 for USER_NAME in $USER_LIST
 do
  echo "Checking user: $USER_NAME"
- psql -h 127.0.0.1 -p 5432 -U "$PGUSER" -d "$PGDATABASE" <<EOF
-DO \$\$
-BEGIN
-  IF NOT EXISTS (
-     SELECT 1 FROM pg_roles WHERE rolname = '$USER_NAME'
-  ) THEN
-     CREATE USER "$USER_NAME" WITH LOGIN PASSWORD '$NEW_DB_PASSWORD';
-     RAISE NOTICE 'User $USER_NAME created';
-  ELSE
-     RAISE NOTICE 'User $USER_NAME already exists';
-  END IF;
-END
-\$\$;
-EOF
-done
-EXISTING_USERS=$(psql -h 127.0.0.1 -p 5432 -U "$PGUSER" -d "$PGDATABASE" -t -A -c "
-SELECT rolname
-FROM pg_roles
-WHERE rolname NOT IN ('postgres')
- AND rolname NOT LIKE 'pg_%'
- AND rolname NOT LIKE 'cloudsql%'
-")
-for DB_USER in $EXISTING_USERS
-do
- if ! grep -q "name: $DB_USER" user.yml; then
-   echo "Deleting user: $DB_USER"
-   psql -h 127.0.0.1 -p 5432 -U "$PGUSER" -d "$PGDATABASE" <<EOF
-REASSIGN OWNED BY "$DB_USER" TO "$PGUSER";
-DROP OWNED BY "$DB_USER";
-DROP ROLE "$DB_USER";
-EOF
+ EXISTS=$(psql -h 127.0.0.1 -p 5432 -U "$PGUSER" -d "$PGDATABASE" -t -A -c \
+   "SELECT 1 FROM pg_roles WHERE rolname = '$USER_NAME'")
+ if [ "$EXISTS" = "1" ]; then
+   echo "User $USER_NAME already exists"
+   continue
  fi
+ USER_PASSWORD=$(openssl rand -base64 16)
+ SECRET_NAME="db-user-${USER_NAME}-password"
+ psql -h 127.0.0.1 -p 5432 -U "$PGUSER" -d "$PGDATABASE" <<EOF
+CREATE USER "$USER_NAME" WITH LOGIN PASSWORD '$USER_PASSWORD';
+EOF
+ if ! gcloud secrets describe "$SECRET_NAME" --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
+   gcloud secrets create "$SECRET_NAME" \
+     --project="$GCP_PROJECT_ID" \
+     --replication-policy="automatic"
+ fi
+ printf "%s" "$USER_PASSWORD" | gcloud secrets versions add "$SECRET_NAME" \
+   --project="$GCP_PROJECT_ID" \
+   --data-file=-
+ echo "User $USER_NAME created and password stored in Secret Manager"
 done
-echo "Sync complete"
+echo "Done"
 psql -h 127.0.0.1 -p 5432 -U "$PGUSER" -d "$PGDATABASE" -c "\du"
